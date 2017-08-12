@@ -15,5 +15,7 @@ namespace api_service.Models
         }
 
         public DbSet<PaymentRequest> PaymentRequests { get; set; }
+
+        public DbSet<Notification> Notifications { get; set; }
     }
 }

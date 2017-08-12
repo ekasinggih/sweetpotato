@@ -8,7 +8,7 @@ using api_service.Models;
 namespace apiservice.Migrations
 {
     [DbContext(typeof(SweetPotatoContext))]
-    [Migration("20170812082346_IntialCreate")]
+    [Migration("20170812092532_IntialCreate")]
     partial class IntialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -16,6 +16,20 @@ namespace apiservice.Migrations
             modelBuilder
                 .HasAnnotation("ProductVersion", "1.1.2")
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+            modelBuilder.Entity("api_service.Models.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("CashTag");
+
+                    b.Property<string>("Token");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Notifications");
+                });
 
             modelBuilder.Entity("api_service.Models.PaymentRequest", b =>
                 {
