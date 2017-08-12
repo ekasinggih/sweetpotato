@@ -19,7 +19,7 @@ namespace api_service.Controllers
             _context = context;
         }
 
-        // GET api/PaymentRequest
+        // GET api/PaymentRequest/{id}
         [HttpGet("{id}", Name = "GetPaymentRequest")]
         public async Task<IActionResult> GetById(long id)
         {
@@ -28,6 +28,17 @@ namespace api_service.Controllers
             {
                 return NotFound();
             }
+            return new ObjectResult(paymentRequest);
+        }
+
+        // GET api/PaymentRequest/{cashTag}
+        [HttpGet("{cashTag}", Name = "GetPaymentRequestByCashTag")]
+        public async Task<IActionResult> GetByCashTag(string cashTag)
+        {
+            var paymentRequest = await _context.PaymentRequests
+                .Where(t => t.PayerCashTag.Equals(cashTag, StringComparison.CurrentCultureIgnoreCase))
+                .ToListAsync();
+           
             return new ObjectResult(paymentRequest);
         }
 
@@ -53,6 +64,38 @@ namespace api_service.Controllers
             await _context.SaveChangesAsync();
 
             return CreatedAtRoute("GetPaymentRequest", new { id = request.Id }, request);
+        }
+
+        // POST api/PaymentRequest/Pay/{id}
+        [HttpPost("Pay/{id}")]
+        public async Task<IActionResult> Pay(long id)
+        {
+            // get payment request
+            var paymentRequest = await _context.PaymentRequests.Where(t => t.Id == id).FirstOrDefaultAsync();
+
+            if (paymentRequest == null)
+            {
+                return NotFound();
+            }
+
+            // check is settled
+            if (paymentRequest.IsSettled)
+            {
+                return BadRequest("transaction settled");
+            }
+
+            // check is expired
+            if (paymentRequest.ExpiredTime < DateTime.UtcNow)
+            {
+                return BadRequest("transaction expired");
+            }
+
+            // set transaction as settled
+            paymentRequest.IsSettled = true;
+            paymentRequest.SettledTime = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return CreatedAtRoute("GetPaymentRequest", new { id = paymentRequest.Id }, paymentRequest);
         }
 
         private string GenerateReferenceNo()

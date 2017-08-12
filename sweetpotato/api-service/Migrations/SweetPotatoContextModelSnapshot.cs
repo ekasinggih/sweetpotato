@@ -37,6 +37,8 @@ namespace apiservice.Migrations
 
                     b.Property<int>("RequesterUserId");
 
+                    b.Property<DateTime?>("SettledTime");
+
                     b.HasKey("Id");
 
                     b.ToTable("PaymentRequests");

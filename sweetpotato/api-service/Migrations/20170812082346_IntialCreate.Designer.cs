@@ -8,8 +8,8 @@ using api_service.Models;
 namespace apiservice.Migrations
 {
     [DbContext(typeof(SweetPotatoContext))]
-    [Migration("20170812064118_IntialDB")]
-    partial class IntialDB
+    [Migration("20170812082346_IntialCreate")]
+    partial class IntialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -37,6 +37,8 @@ namespace apiservice.Migrations
                     b.Property<string>("RequesterCashTag");
 
                     b.Property<int>("RequesterUserId");
+
+                    b.Property<DateTime?>("SettledTime");
 
                     b.HasKey("Id");
 

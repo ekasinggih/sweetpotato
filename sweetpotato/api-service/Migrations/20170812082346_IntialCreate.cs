@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace apiservice.Migrations
 {
-    public partial class IntialDB : Migration
+    public partial class IntialCreate : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -22,7 +22,8 @@ namespace apiservice.Migrations
                     PayerUserId = table.Column<int>(nullable: false),
                     ReferenceNo = table.Column<string>(nullable: true),
                     RequesterCashTag = table.Column<string>(nullable: true),
-                    RequesterUserId = table.Column<int>(nullable: false)
+                    RequesterUserId = table.Column<int>(nullable: false),
+                    SettledTime = table.Column<DateTime>(nullable: true)
                 },
                 constraints: table =>
                 {

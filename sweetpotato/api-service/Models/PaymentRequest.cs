@@ -16,5 +16,6 @@ namespace api_service.Models
         public string ReferenceNo { get; set; }
         public DateTime ExpiredTime { get; set; }
         public bool IsSettled { get; set; }
+        public DateTime? SettledTime { get; set; }
     }
 }
