@@ -1,11 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using api_service.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace api_service.Controllers
 {
@@ -38,13 +44,13 @@ namespace api_service.Controllers
             var paymentRequest = await _context.PaymentRequests
                 .Where(t => t.PayerCashTag.Equals(cashTag, StringComparison.CurrentCultureIgnoreCase))
                 .ToListAsync();
-           
+
             return new ObjectResult(paymentRequest);
         }
 
         // POST api/PaymentRequest
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody]PaymentRequest request)
+        public async Task<IActionResult> Post([FromBody] PaymentRequest request)
         {
             if (request == null)
             {
@@ -62,6 +68,21 @@ namespace api_service.Controllers
 
             _context.PaymentRequests.Add(request);
             await _context.SaveChangesAsync();
+
+            // send notification to device
+            var deviceNotification = await _context.Notifications.OrderByDescending(t => t.Id).FirstOrDefaultAsync();
+            if (deviceNotification != null)
+            {
+                try
+                {
+                    await SendNotification(request.Id, deviceNotification.Token, "Tagihan Pembayaran",
+                                $"Tagihan pembayaran sebesar {request.Amount} dari {request.PayerCashTag}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"error sending notification : {ex.Message}");
+                }
+            }
 
             return CreatedAtRoute("GetPaymentRequest", new { id = request.Id }, request);
         }
@@ -95,12 +116,65 @@ namespace api_service.Controllers
             paymentRequest.SettledTime = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
+            // send notification to device
+            var deviceNotification = await _context.Notifications.OrderByDescending(t => t.Id).FirstOrDefaultAsync();
+            if (deviceNotification != null)
+            {
+                try
+                {
+                    await SendNotification(paymentRequest.Id, deviceNotification.Token, "Pembayaran Tagihan",
+                                $"Tagihan pembayaran sebesar {paymentRequest.Amount} telah di bayarkan");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"error sending notification : {ex.Message}");
+                }
+            }
+
             return CreatedAtRoute("GetPaymentRequest", new { id = paymentRequest.Id }, paymentRequest);
         }
 
         private string GenerateReferenceNo()
         {
-            return string.Concat(DateTime.UtcNow.ToString("yyyyMMdd_hhmmss_ffff", CultureInfo.InvariantCulture), "-", Guid.NewGuid());
+            return string.Concat(DateTime.UtcNow.ToString("yyyyMMdd_hhmmss_ffff", CultureInfo.InvariantCulture), "-",
+                Guid.NewGuid());
+        }
+
+        private const string NOTIFICATION_URL = "https://fcm.googleapis.com/fcm/send";
+        private const string SERVER_API_KEY = "AAAAKBdOFwQ:APA91bGX4vUxuDZAfLJ1aZsDXjvzWLWLrwne5LfZrs6Gn0ZZ2jOK1DhrzPSg6CaIe6LDJOBnD60kGnURmqCTKf127o10nmf54LfVwPcB10UWsGSqnfExDbJ4_0ysHGl4AnY74gZtXV0H";
+        private const string SENDER_ID = "172189685508";
+
+        private async Task SendNotification(int id, string token, string title, string message)
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            //client.DefaultRequestHeaders.Add("Content-Type", "application/json");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"key={SERVER_API_KEY}");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Sender", $"id={SENDER_ID}");
+
+            var body = new
+            {
+                notification = new
+                {
+                    body = message,
+                    title,
+                    sound = "default",
+                    priority = "high"
+                },
+                data = new
+                {
+                    id
+                },
+                to = token
+            };
+            var jsonBody = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
+            Console.WriteLine(jsonBody);
+            var response = await client.PostAsync(NOTIFICATION_URL, jsonBody);
+            var responseMessage = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(response);
+            Console.WriteLine(responseMessage);
         }
     }
 }
+;
