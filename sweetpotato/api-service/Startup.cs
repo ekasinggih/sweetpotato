@@ -2,13 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using api_service.Models;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace sweetpotato_service
+namespace api_service
 {
     public class Startup
     {
@@ -27,6 +29,10 @@ namespace sweetpotato_service
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            // add entity framework service
+            string connection = Configuration.GetConnectionString("DefaultConnection");
+            services.AddDbContext<SweetPotatoContext>(opt => opt.UseSqlServer(connection));
+
             // Add framework services.
             services.AddMvc();
         }
