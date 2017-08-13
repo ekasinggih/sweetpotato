@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using api_service.Models;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace api_service.Controllers
 {
-[Route("api/[controller]")]
+[Route("api/[controller]"), DisableCors]
 public class NotificationController : ControllerBase
     {
         private readonly SweetPotatoContext _context;

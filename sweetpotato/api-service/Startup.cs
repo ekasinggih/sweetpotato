@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using api_service.Models;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +23,7 @@ namespace api_service
                 .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();
             Configuration = builder.Build();
+
         }
 
         public IConfigurationRoot Configuration { get; }
@@ -35,6 +37,13 @@ namespace api_service
 
             // Add framework services.
             services.AddMvc();
+
+            // Setup CORS
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAnyOrigin",
+                builder => builder.AllowAnyOrigin());
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -44,6 +53,9 @@ namespace api_service
             loggerFactory.AddDebug();
 
             app.UseMvc();
+
+            // Shows UseCors with CorsPolicyBuilder.
+            app.UseCors("AllowAnyOrigin");
         }
     }
 }

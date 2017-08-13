@@ -9,13 +9,14 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using api_service.Models;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 
 namespace api_service.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]"), DisableCors]
     public class PaymentRequestController : Controller
     {
         private readonly SweetPotatoContext _context;
@@ -48,20 +49,80 @@ namespace api_service.Controllers
             return new ObjectResult(paymentRequest);
         }
 
+        // GET api/PaymentRequest/{cashTag}
+        [HttpGet("settle/{cashTag}")]
+        public async Task<IActionResult> GetSettleByCashTag(string cashTag)
+        {
+            var paymentRequest = await _context.PaymentRequests
+                .Where(t => t.PayerCashTag.Equals(cashTag, StringComparison.CurrentCultureIgnoreCase) && t.IsSettled)
+                .OrderByDescending(t => t.Id)
+                .ToListAsync();
+
+            return new ObjectResult(paymentRequest);
+        }
+
+        [HttpGet("outstanding/{cashTag}")]
+        public async Task<IActionResult> GetOutstandingByCashTag(string cashTag)
+        {
+            var paymentRequest = await _context.PaymentRequests
+                .Where(t => t.PayerCashTag.Equals(cashTag, StringComparison.CurrentCultureIgnoreCase) && 
+                t.ExpiredTime > DateTime.UtcNow && !t.IsSettled)
+                .OrderByDescending(t => t.Id)
+                .ToListAsync();
+
+            return new ObjectResult(paymentRequest);
+        }
+
+        // GET api/PaymentRequest/{cashTag}
+        [HttpGet("History/{cashTag}")]
+        public async Task<IActionResult> GetHistoryByCashTag(string cashTag)
+        {
+            var paymentRequest = await _context.PaymentRequests
+                .Where(t => t.RequesterCashTag.Equals(cashTag, StringComparison.CurrentCultureIgnoreCase))
+                .OrderByDescending(t => t.Id)
+                .ToListAsync();
+
+            return new ObjectResult(paymentRequest);
+        }
+
         // POST api/PaymentRequest
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] PaymentRequest request)
         {
+            Console.WriteLine("api call POST /PaymentRequest");
             if (request == null)
             {
                 return BadRequest();
             }
 
             // check is reference no is supplied, if not auto generate by system
-            if (!string.IsNullOrWhiteSpace(request.ReferenceNo))
+            if (string.IsNullOrWhiteSpace(request.ReferenceNo))
             {
                 request.ReferenceNo = GenerateReferenceNo();
             }
+
+            // get PayerUserId
+            var payer = await _context.Customers.FirstOrDefaultAsync(
+                    t => t.CashTag.Equals(request.PayerCashTag, StringComparison.CurrentCultureIgnoreCase));
+            if (payer == null)
+            {
+                return BadRequest("payer not found");
+            }
+            request.PayerUserId = payer.Id;
+            request.PayerName = payer.Name;
+
+            // get RequesterUserId
+            var requester = await _context.Customers.FirstOrDefaultAsync(
+                    t => t.CashTag.Equals(request.RequesterCashTag, StringComparison.CurrentCultureIgnoreCase));
+            if (requester == null)
+            {
+                return BadRequest("requester not found");
+            }
+            request.RequesterUserId = requester.Id;
+            request.RequesterName = requester.Name;
+
+            // set transaction time
+            request.TransactionTime = DateTime.UtcNow;
 
             // set expired time
             request.ExpiredTime = DateTime.UtcNow.AddMinutes(5);
@@ -91,6 +152,7 @@ namespace api_service.Controllers
         [HttpPost("Pay/{id}")]
         public async Task<IActionResult> Pay(long id)
         {
+            Console.WriteLine("api call POST /PaymentRequest/Pay/{id}");
             // get payment request
             var paymentRequest = await _context.PaymentRequests.Where(t => t.Id == id).FirstOrDefaultAsync();
 
@@ -136,8 +198,7 @@ namespace api_service.Controllers
 
         private string GenerateReferenceNo()
         {
-            return string.Concat(DateTime.UtcNow.ToString("yyyyMMdd_hhmmss_ffff", CultureInfo.InvariantCulture), "-",
-                Guid.NewGuid());
+            return string.Concat(DateTime.UtcNow.ToString("yyyyMMdd_hhmmss_ffff", CultureInfo.InvariantCulture), "-", Guid.NewGuid());
         }
 
         private const string NOTIFICATION_URL = "https://fcm.googleapis.com/fcm/send";
